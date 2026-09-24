@@ -1,0 +1,16 @@
+# Virtual environment
+venv/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Vector DB (regenerated from data/docs/ automatically)
+chroma_db/
+
+# Environment variables / secrets
+.env
+
+# OS/editor cruft
+.DS_Store
+.vscode/

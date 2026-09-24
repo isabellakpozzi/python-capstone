@@ -1,0 +1,2 @@
+Our security policy requires all employees to use two-factor authentication.
+Passwords must be rotated every 90 days. All customer data is encrypted at rest.
