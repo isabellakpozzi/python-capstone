@@ -22,10 +22,11 @@ def fake_llm(prompt: str) -> str:
 
 
 @pytest.fixture
-def qual_agent(test_docs_path, tmp_path, monkeypatch):
-    # Point Chroma's persistent storage at a temp folder, isolated per test run
-    monkeypatch.chdir(tmp_path)
-    agent = QualitativeAgent(docs_path=test_docs_path, llm_fn=fake_llm)
+def qual_agent(test_docs_path, tmp_path):
+    chroma_path = str(tmp_path / "chroma_db")  
+    agent = QualitativeAgent(
+        docs_path=test_docs_path, llm_fn=fake_llm, chroma_path=chroma_path
+    )
     return agent
 
 def test_answer_includes_citation_from_relevant_doc(qual_agent):
@@ -36,7 +37,6 @@ def test_answer_includes_citation_from_relevant_doc(qual_agent):
 def test_answer_does_not_cite_unrelated_doc(qual_agent):
     result = qual_agent.answer("What is our security policy?")
     # The code review doc shouldn't be the top match for a security question
-    # (this checks the *primary* source, not that it's absent entirely)
     assert "[TEST ANSWER]" in result
 
 def test_answer_handles_query_with_no_relevant_docs(qual_agent):

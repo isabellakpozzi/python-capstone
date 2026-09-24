@@ -18,7 +18,13 @@ class QuantitativeAgent:
     def _nl_to_sql(self, query: str) -> str:
         prompt = (
             f"Given this SQLite schema:\n{self.schema}\n\n"
-            f"Write ONE valid SQL query (no explanation) to answer: {query}"
+            f"Write ONE valid SQL query (no explanation) to answer: {query}\n"
+            f"Only reference tables and columns that exist in the schema above. "
+            f"Do not join tables that use incompatible time granularities "
+            f"(e.g. a monthly table and a quarterly table) unless there is a "
+            f"shared column that maps between them. "
+            f"SQLite strftime does not support a quarter format specifier — "
+            f"never use '%q'. Prefer simpler queries over ones with unnecessary joins."
         )
         raw = self.llm_fn(prompt).strip()
 
@@ -38,5 +44,5 @@ class QuantitativeAgent:
             return f"SQL failed: {e}\nQuery: {sql}"
 
         if df.empty:
-            return "No results found."
+            return f"No results found.\n\n[Generated SQL: {sql}]"
         return f"{df.to_string(index=False)}\n\n[Generated SQL: {sql}]"

@@ -24,6 +24,16 @@ sales_rows = [
 ]
 conn.executemany("INSERT INTO sales (month, region, revenue) VALUES (?, ?, ?)", sales_rows)
 
+conn.execute("ALTER TABLE sales ADD COLUMN quarter TEXT")
+conn.execute("""
+UPDATE sales SET quarter = CASE
+    WHEN month IN ('Jan','Feb','Mar') THEN 'Q1'
+    WHEN month IN ('Apr','May','Jun') THEN 'Q2'
+    WHEN month IN ('Jul','Aug','Sep') THEN 'Q3'
+    WHEN month IN ('Oct','Nov','Dec') THEN 'Q4'
+END
+""")
+
 churn_rows = [
     ('Jan', 500, 15), ('Feb', 510, 12), ('Mar', 520, 18),
     ('Oct', 600, 20), ('Nov', 610, 14), ('Dec', 615, 10),

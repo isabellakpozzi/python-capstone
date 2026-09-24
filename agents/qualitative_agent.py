@@ -2,8 +2,8 @@ import chromadb
 from chromadb.utils import embedding_functions
 
 class QualitativeAgent:
-    def __init__(self, docs_path, llm_fn):
-        self.client = chromadb.PersistentClient(path="./chroma_db")
+    def __init__(self, docs_path: str, llm_fn, chroma_path: str = "./chroma_db"):
+        self.client = chromadb.PersistentClient(path=chroma_path)
         self.embedder = embedding_functions.SentenceTransformerEmbeddingFunction(
             model_name="all-MiniLM-L6-v2"
         )
