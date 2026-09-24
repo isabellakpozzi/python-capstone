@@ -22,9 +22,19 @@ class QualitativeAgent:
                 text = f.read()
             self.collection.add(documents=[text], ids=[fname], metadatas=[{"source": fname}])
 
-    def answer(self, query: str, top_k=3) -> str:
+    def answer(self, query: str, top_k: int = 3, max_distance: float = 0.9) -> str:
         results = self.collection.query(query_texts=[query], n_results=top_k)
-        context = "\n\n".join(results["documents"][0])
-        sources = ", ".join(m["source"] for m in results["metadatas"][0])
+        docs = results["documents"][0]
+        distances = results["distances"][0]
+        sources = results["metadatas"][0]
+
+        if not distances or distances[0] > max_distance:
+            return "I couldn't find relevant documentation for that question."
+
+        kept = list(zip(docs, sources, distances))
+        context = "\n\n".join(doc for doc, _, _ in kept)
+        citations = ", ".join(src["source"] for _, src, _ in kept)
+
         prompt = f"Answer using ONLY this context:\n{context}\n\nQuestion: {query}"
-        return f"{self.llm_fn(prompt)}\n\n[Sources: {sources}]"
+        answer_text = self.llm_fn(prompt)
+        return f"{answer_text}\n\n[Sources: {citations}]"
