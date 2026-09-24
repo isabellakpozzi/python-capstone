@@ -1,0 +1,4 @@
+Our customer success strategy focuses on proactive check-ins for accounts
+showing declining usage. Customers are segmented into tiers based on contract
+value, with high-tier accounts receiving a dedicated success manager.
+Quarterly business reviews are conducted with all accounts above $50k ARR.

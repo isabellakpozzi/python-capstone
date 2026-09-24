@@ -1,0 +1,4 @@
+Our code review process requires every pull request to be reviewed by at least
+one other engineer before merging. Reviewers check for correctness, test
+coverage, and adherence to style guidelines. Critical changes to production
+systems require two approvals. Reviews should be completed within 24 hours.

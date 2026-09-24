@@ -1,12 +1,12 @@
-from llm import mock_llm
+from llm import mock_llm, call_llm
 from agents.manager import ManagerAgent
 from agents.qualitative_agent import QualitativeAgent
 from agents.quantitative_agent import QuantitativeAgent
 from system import build_system
 
 def main():
-    # manager = build_system(llm_fn=call_llm)  
-    manager = build_system(llm_fn=mock_llm)
+    manager = build_system(llm_fn=call_llm)  
+    # manager = build_system(llm_fn=mock_llm)
     print("=== Enterprise Docs Assistant ===")
     print("Ask a qualitative or quantitative question, or 'exit' to quit.\n")
 

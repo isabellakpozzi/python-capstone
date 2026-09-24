@@ -1,0 +1,4 @@
+Customer complaints are logged in the support ticketing system and triaged
+within 4 business hours. High-severity complaints are escalated to a team lead
+immediately. All complaints receive a follow-up within 48 hours, and repeat
+issues are flagged for the product team to review.

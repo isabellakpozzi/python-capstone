@@ -13,7 +13,7 @@ class ManagerAgent:
 
     def classify(self, query: str) -> QueryType:
         quant_keywords = ["revenue", "churn", "trend", "compare", "how many", "average"]
-        qual_keywords = ["policy", "process", "how do we", "explain"]
+        qual_keywords = ["policy", "policies", "process", "how do we", "explain"]
         has_quant = any(k in query.lower() for k in quant_keywords)
         has_qual = any(k in query.lower() for k in qual_keywords)
         if has_quant and has_qual:

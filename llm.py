@@ -1,16 +1,18 @@
 # llm.py
 import os
 from dotenv import load_dotenv
+from openai import OpenAI
 
 load_dotenv()
 
+_client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
+
 def call_llm(prompt: str) -> str:
     """Real LLM call — swap in whichever provider you have API access to."""
-    from openai import OpenAI
-    client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
-    response = client.chat.completions.create(
+    response = _client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[{"role": "user", "content": prompt}],
+        temperature=0.2,
     )
     return response.choices[0].message.content
 
