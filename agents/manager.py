@@ -9,10 +9,14 @@ class QueryType(Enum):
     AMBIGUOUS = "ambiguous"
     UNSUPPORTED = "unsupported"
 
+QUANT_CLARIFICATION_WORDS = ("quantitative", "numbers", "data", "the second one", "metrics", "stats")
+QUAL_CLARIFICATION_WORDS = ("qualitative", "policy", "policies", "the first one", "process")
+
 class ManagerAgent:
     def __init__(self, qual_agent, quant_agent):
         self.qual_agent = qual_agent
         self.quant_agent = quant_agent
+        self.pending_clarification_query = None
 
     def classify(self, query: str) -> QueryType:
         q = query.lower()
@@ -39,6 +43,12 @@ class ManagerAgent:
         start_time = time.time()
         logger.info(f"Incoming query: {query!r}")
 
+        if self.pending_clarification_query is not None:
+            result = self._resolve_clarification(query)
+            elapsed = time.time() - start_time
+            logger.info(f"Execution time: {elapsed:.3f}s for query {query!r}")
+            return result
+
         qtype = self.classify(query)
         logger.info(f"Selected agent: {qtype.value}")
 
@@ -54,11 +64,13 @@ class ManagerAgent:
                 quant_part = self.quant_agent.answer(query)
                 result = {"type": "complex", "response": self._merge(qual_part, quant_part)}
             elif qtype == QueryType.AMBIGUOUS:
+                self.pending_clarification_query = query
                 result = {
                     "type": "ambiguous",
                     "response": (
-                        "Your question could be answered a couple of ways — could you "
-                        "clarify? For example: policies/processes, or specific numbers/metrics?"
+                        "Your question could be answered a couple of ways — could you clarify? "
+                        "For example: are you asking about documented policies/processes "
+                        "(qualitative), or specific numbers/metrics (quantitative)?"
                     ),
                 }
             else:
@@ -72,6 +84,29 @@ class ManagerAgent:
         logger.info(f"Execution time: {elapsed:.3f}s for query {query!r}")
 
         return result
+
+    def _resolve_clarification(self, response: str) -> dict:
+        original_query = self.pending_clarification_query
+        self.pending_clarification_query = None  
+        r = response.lower().strip()
+
+        if any(word in r for word in QUANT_CLARIFICATION_WORDS):
+            logger.info(f"Clarification resolved to quantitative for original query: {original_query!r}")
+            return {"type": "quantitative", "response": self.quant_agent.answer(original_query)}
+
+        if any(word in r for word in QUAL_CLARIFICATION_WORDS):
+            logger.info(f"Clarification resolved to qualitative for original query: {original_query!r}")
+            return {"type": "qualitative", "response": self.qual_agent.answer(original_query)}
+
+        # unreasonable response case to avoid looping forever
+        logger.info(f"Clarification response {response!r} was not understood; giving up gracefully")
+        return {
+            "type": "unsupported",
+            "response": (
+                "I still couldn't tell which you meant — could you rephrase your original "
+                "question directly instead?"
+            ),
+        }
 
     def _merge(self, qual_part, quant_part) -> str:
         return f"**Qualitative:**\n{qual_part}\n\n**Quantitative:**\n{quant_part}"

@@ -107,3 +107,46 @@ def test_ambiguous_query_asks_for_clarification_without_calling_agents():
     assert "clarify" in result["response"].lower()
     assert qual.last_query is None
     assert quant.last_query is None
+
+def test_clarification_response_resolves_to_quantitative():
+    quant = FakeAgent("quant answer")
+    manager = ManagerAgent(FakeAgent(), quant)
+
+    ambiguous_result = manager.handle_query("Tell me about our results")
+    assert ambiguous_result["type"] == "ambiguous"
+    assert manager.pending_clarification_query == "Tell me about our results"
+
+    follow_up = manager.handle_query("the numbers one")
+    assert follow_up["type"] == "quantitative"
+    assert follow_up["response"] == "quant answer"
+    assert quant.last_query == "Tell me about our results" 
+    assert manager.pending_clarification_query is None  
+
+
+def test_clarification_response_resolves_to_qualitative():
+    qual = FakeAgent("qual answer")
+    manager = ManagerAgent(qual, FakeAgent())
+
+    manager.handle_query("How are we doing on performance?")
+    follow_up = manager.handle_query("I mean the policy side")
+    assert follow_up["type"] == "qualitative"
+    assert qual.last_query == "How are we doing on performance?"
+
+
+def test_unreasonable_clarification_response_gives_up_gracefully():
+    manager = ManagerAgent(FakeAgent(), FakeAgent())
+    manager.handle_query("Tell me about our results")
+
+    follow_up = manager.handle_query("asdkjhaskjdh")
+    assert follow_up["type"] == "unsupported"
+    assert "rephrase" in follow_up["response"].lower()
+    assert manager.pending_clarification_query is None  # no infinite loop
+
+
+def test_clarification_state_does_not_persist_after_resolution():
+    manager = ManagerAgent(FakeAgent("qual"), FakeAgent("quant"))
+    manager.handle_query("Tell me about our results")
+    manager.handle_query("the numbers one")  # resolves and clears state
+
+    result = manager.handle_query("What is our security policy?")
+    assert result["type"] == "qualitative"
