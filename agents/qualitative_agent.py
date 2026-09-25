@@ -1,5 +1,7 @@
 import chromadb
 from chromadb.utils import embedding_functions
+from logging_config import logger
+
 
 class QualitativeAgent:
     def __init__(self, docs_path: str, llm_fn, chroma_path: str = "./chroma_db"):
@@ -30,17 +32,24 @@ class QualitativeAgent:
         ids = results["ids"][0]
 
         if not distances or distances[0] > max_distance:
+            logger.info(f"No relevant sources found for query: {query!r}")
             return "I couldn't find relevant documentation for that question."
 
         kept = list(zip(docs, sources, distances, ids))
-        context = "\n\n".join(doc for doc, _, _, _ in kept)
+        source_names = [src["source"] for _, src, _, _ in kept]
+        logger.info(f"Retrieved sources: {source_names}")
 
+        context = "\n\n".join(doc for doc, _, _, _ in kept)
         prompt = f"Answer using ONLY this context:\n{context}\n\nQuestion: {query}"
-        answer_text = self.llm_fn(prompt)
+
+        try:
+            answer_text = self.llm_fn(prompt)
+        except Exception as e:
+            logger.error(f"LLM call failed for query {query!r}: {e}")
+            return f"Failed to generate an answer: {e}"
 
         citation_lines = "\n".join(
             f"  - {src['source']} (id: {doc_id}, similarity score: {1 - dist:.3f})"
             for _, src, dist, doc_id in kept
         )
-
         return f"{answer_text}\n\nSources:\n{citation_lines}"

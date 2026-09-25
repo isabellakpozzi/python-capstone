@@ -1,6 +1,6 @@
 import sqlite3
 import pandas as pd
-
+from logging_config import logger
 
 class QuantitativeAgent:
     def __init__(self, db_path: str, llm_fn):
@@ -36,13 +36,18 @@ class QuantitativeAgent:
 
     def answer(self, query: str) -> str:
         sql = self._nl_to_sql(query)
+        logger.info(f"Generated SQL: {sql}")
+
         try:
             conn = sqlite3.connect(self.db_path)
             df = pd.read_sql_query(sql, conn)
             conn.close()
         except Exception as e:
+            logger.error(f"SQL execution failed for query {query!r}: {e} | SQL: {sql}")
             return f"SQL failed: {e}\nQuery: {sql}"
 
         if df.empty:
+            logger.info(f"Query returned no results: {sql}")
             return f"No results found.\n\n[Generated SQL: {sql}]"
+
         return f"{df.to_string(index=False)}\n\n[Generated SQL: {sql}]"
