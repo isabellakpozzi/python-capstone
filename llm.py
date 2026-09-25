@@ -11,7 +11,7 @@ _client = OpenAI(api_key=os.environ["OPENAI_API_KEY"])
 def call_llm(prompt: str) -> str:
     """Real LLM call — swap in whichever provider you have API access to."""
     response = _client.chat.completions.create(
-        model="LLM_MODEL",
+        model=LLM_MODEL,
         messages=[{"role": "user", "content": prompt}],
         temperature=0.2,
     )
