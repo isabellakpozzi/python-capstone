@@ -48,3 +48,8 @@ def test_answer_finds_relevant_doc_with_default_threshold(qual_agent):
     result = qual_agent.answer("What is our security policy?")
     assert "security_policy.txt" in result
     assert "couldn't find" not in result.lower()
+
+def test_answer_includes_doc_id_and_similarity_score(qual_agent):
+    result = qual_agent.answer("What is our security policy?")
+    assert "id:" in result
+    assert "similarity score:" in result

@@ -27,14 +27,20 @@ class QualitativeAgent:
         docs = results["documents"][0]
         distances = results["distances"][0]
         sources = results["metadatas"][0]
+        ids = results["ids"][0]
 
         if not distances or distances[0] > max_distance:
             return "I couldn't find relevant documentation for that question."
 
-        kept = list(zip(docs, sources, distances))
-        context = "\n\n".join(doc for doc, _, _ in kept)
-        citations = ", ".join(src["source"] for _, src, _ in kept)
+        kept = list(zip(docs, sources, distances, ids))
+        context = "\n\n".join(doc for doc, _, _, _ in kept)
 
         prompt = f"Answer using ONLY this context:\n{context}\n\nQuestion: {query}"
         answer_text = self.llm_fn(prompt)
-        return f"{answer_text}\n\n[Sources: {citations}]"
+
+        citation_lines = "\n".join(
+            f"  - {src['source']} (id: {doc_id}, similarity score: {1 - dist:.3f})"
+            for _, src, dist, doc_id in kept
+        )
+
+        return f"{answer_text}\n\nSources:\n{citation_lines}"
