@@ -89,3 +89,21 @@ def test_unsupported_query_does_not_call_any_agent():
     assert "rephrasing" in result["response"].lower()
     assert qual.last_query is None
     assert quant.last_query is None
+
+def test_classifies_ambiguous_query():
+    manager = ManagerAgent(FakeAgent(), FakeAgent())
+    result = manager.classify("How are we doing on performance?")
+    assert result == QueryType.AMBIGUOUS
+
+
+def test_ambiguous_query_asks_for_clarification_without_calling_agents():
+    qual = FakeAgent()
+    quant = FakeAgent()
+    manager = ManagerAgent(qual, quant)
+
+    result = manager.handle_query("Tell me about our results")
+
+    assert result["type"] == "ambiguous"
+    assert "clarify" in result["response"].lower()
+    assert qual.last_query is None
+    assert quant.last_query is None

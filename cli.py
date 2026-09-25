@@ -20,5 +20,8 @@ def main():
         result = manager.handle_query(query)
         print(f"\n[{result['type'].upper()}]\n{result['response']}\n")
 
+        if result["type"] == "ambiguous":
+            continue
+
 if __name__ == "__main__":
     main()
