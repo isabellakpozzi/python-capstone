@@ -17,6 +17,30 @@ A Python-based multi-agent system that answers enterprise documentation question
 
 ---
 
+## Project Structure
+
+```
+python-capstone/
+├── agents/
+│   ├── manager.py              # Query classification, routing, ambiguity handling
+│   ├── qualitative_agent.py    # RAG agent (Chroma + LLM)
+│   └── quantitative_agent.py   # NL-to-SQL agent
+├── api/
+│   ├── main.py                 # FastAPI routes
+│   └── schemas.py              # Pydantic request/response models
+├── data/
+│   ├── docs/                   # Sample documents for the vector store
+│   └── enterprise.db           # SQLite sample data
+├── tests/                      # Full test suite (unit, integration, API, CLI)
+├── cli.py                      # Command-line interface
+├── config.py                   # Environment-based configuration
+├── llm.py                      # LLM call wrapper (real + mock)
+├── logging_config.py           # Structured logging setup
+├── setup_db.py                 # Seeds the sample SQLite database
+├── reset_chroma.py             # Clears the vector index for re-indexing
+└── requirements.txt
+```
+
 ## Architecture
 
 ```mermaid
@@ -108,6 +132,15 @@ This creates `data/enterprise.db` with sample `sales`, `churn`, `employee_satisf
 python cli.py
 ```
 
+### Re-indexing After Document Changes
+
+If you add, edit, or remove files in `data/docs/`, clear and rebuild the vector index:
+
+```bash
+rm -rf chroma_db/
+```
+Chroma only indexes documents once (on first run with an empty collection), so changes to `data/docs/` won't be picked up automatically otherwise.
+
 ```
 === Enterprise Docs Assistant ===
 Ask a qualitative or quantitative question, or 'exit' to quit.
@@ -133,8 +166,72 @@ region  revenue  units_sold
 FROM quarterly_performance 
 WHERE quarter = 'Q4';]
 
+> How does our employee satisfaction compare to industry standards and what policies might impact this?
+
+[COMPLEX]
+**Qualitative:**
+Employee satisfaction is measured through an annual engagement survey, and results are benchmarked against industry averages. Departments scoring below the industry benchmark are required to submit an improvement plan within 60 days. This policy aims to address any deficiencies in employee satisfaction and improve overall engagement.
+
+Sources:
+  - employee_satisfaction_policy.txt (id: employee_satisfaction_policy.txt, similarity score: 0.640)
+  - customer_success_policy.txt (id: customer_success_policy.txt, similarity score: 0.314)
+  - customer_complaints.txt (id: customer_complaints.txt, similarity score: 0.219)
+
+**Quantitative:**
+quarter  avg_score  industry_benchmark
+     Q1        7.8                 7.5
+     Q2        8.0                 7.6
+     Q3        7.9                 7.6
+     Q4        8.2                 7.7
+
+[Generated SQL: SELECT quarter, avg_score, industry_benchmark 
+FROM employee_satisfaction;]
+
 > exit
 Goodbye.
+```
+
+### Ambiguous Query Handling
+
+If a question is too vague to classify confidently, the Manager asks for clarification instead of guessing, and resolves your follow-up against the original question:
+
+```
+> Tell me about our results
+
+[AMBIGUOUS]
+Your question could be answered a couple of ways — could you clarify?
+For example: are you asking about documented policies/processes
+(qualitative), or specific numbers/metrics (quantitative)?
+
+> the numbers one
+
+[QUANTITATIVE]
+month region  sales_revenue  customers_start  customers_lost  employee_satisfaction_score  industry_benchmark
+  Jan   West        12000.0              500              15                          7.8                 7.5
+  Feb   West        15000.0              510              12                          7.8                 7.5
+  Mar   West        14000.0              520              18                          7.8                 7.5
+  Oct   West        20000.0              600              20                          8.2                 7.7
+  Nov   West        22000.0              610              14                          8.2                 7.7
+  Dec   West        25000.0              615              10                          8.2                 7.7
+  Jan   East         9000.0              500              15                          7.8                 7.5
+  Oct   East        17000.0              600              20                          8.2                 7.7
+  Nov   East        18000.0              610              14                          8.2                 7.7
+  Dec   East        19500.0              615              10                          8.2                 7.7
+
+[Generated SQL: SELECT 
+    s.month, 
+    s.region, 
+    s.revenue AS sales_revenue, 
+    c.customers_start, 
+    c.customers_lost, 
+    e.avg_score AS employee_satisfaction_score, 
+    e.industry_benchmark 
+FROM 
+    sales s 
+LEFT JOIN 
+    churn c ON s.month = c.month 
+LEFT JOIN 
+    employee_satisfaction e ON s.quarter = e.quarter;]
 ```
 
 ### Sample Supported Queries
@@ -220,3 +317,5 @@ Every query logs, in structured form, to stdout: the incoming query, the selecte
 - The "similarity score" shown alongside citations is a simple `1 - distance` transformation for readability, not a formally normalized cosine similarity.
 - The NL-to-SQL agent occasionally attempts overly ambitious multi-table joins on broad, open-ended questions; prompt constraints reduce but do not fully eliminate this.
 - The live `/query` API integration test makes a real LLM call and will incur API usage.
+- The Manager's clarification-state tracking (`pending_clarification_query`) is per-instance and works correctly for the single-user CLI. The API currently shares one Manager instance across all requests, so concurrent users could theoretically interfere with each other's pending clarification state. A production version would scope this state per session/request rather than per Manager instance.
+- Clarification handling uses simple keyword matching on the follow-up response and allows only one retry before falling back to a "please rephrase" message. It does not yet distinguish "answering the clarification" from "the user changed the subject entirely."
